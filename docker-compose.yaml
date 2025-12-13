@@ -1,64 +1,99 @@
 services:
-  # 1. Apache NiFi 
+  # 1. APACHE NIFI
   nifi:
     image: apache/nifi:latest
     container_name: nifi
     ports:
       - "8443:8443"
     environment:
-      # FORCE HTTPS
       - NIFI_WEB_HTTPS_PORT=8443
       - NIFI_WEB_HTTP_PORT=
-      # FORCE LOGIN
       - SINGLE_USER_CREDENTIALS_USERNAME=admin
       - SINGLE_USER_CREDENTIALS_PASSWORD=password12345678
+    volumes:
+      - ./nifi_conf:/opt/nifi/nifi-current/conf
     networks:
       - bigdata-net
 
-  # 2. Apache Flink (Latest)
-  jobmanager:
-    image: flink:latest
-    container_name: flink-jobmanager
+  # 2. APACHE ZOOKEEPER 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.4
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "8081:8081"
-    command: jobmanager
-    environment:
-      - |
-        FLINK_PROPERTIES=
-        jobmanager.rpc.address: jobmanager
+      - 22181:2181
+    volumes:
+      - zk_data:/datalog
+      - zk_data:/datalogs
     networks:
       - bigdata-net
 
-  taskmanager:
-    image: flink:latest
-    container_name: flink-taskmanager
+  # 3. APACHE KAFKA
+  kafka:
+    image: confluentinc/cp-kafka:7.4.4
     depends_on:
-      - jobmanager
-    command: taskmanager
-    scale: 1
+      - zookeeper
+    ports:
+      - 29092:29092
     environment:
-      - |
-        FLINK_PROPERTIES=
-        jobmanager.rpc.address: jobmanager
-        taskmanager.numberOfTaskSlots: 2
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - bigdata-net
+      
+  # 4. APACHE SPARK (master)
+  spark-master:
+    image: apache/spark:latest
+    container_name: spark-master
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    ports:
+      - "8080:8080" # Spark Web UI
+      - "7077:7077" # Spark Communication Port
+    environment:
+      SPARK_DAEMON_MASTER: "true"
+      SPARK_MASTER_PORT: "7077"
+      SPARK_MASTER_WEBUI_PORT: "8080"
     networks:
       - bigdata-net
 
-  # 3. Elasticsearch
+  # 5. APACHE SPARK (worker)
+  spark-worker:
+    image: apache/spark:latest
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    environment:
+      SPARK_DAEMON_WORKER: "true"
+      SPARK_WORKER_CORES: "1"
+      SPARK_WORKER_MEMORY: "1g"
+      SPARK_MASTER: "spark://spark-master:7077"
+    networks:
+      - bigdata-net
+
+  # 6. ELASTICSEARCH (Storage)
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      # Disables the complex v8 security/passwords
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
     ports:
       - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
     networks:
       - bigdata-net
 
-  # 4. Kibana
+  # 7. KIBANA (Visualization)
   kibana:
     image: docker.elastic.co/kibana/kibana:9.2.2
     container_name: kibana
@@ -68,9 +103,17 @@ services:
       - "5601:5601"
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    volumes:
+      - kibana_data:/usr/share/kibana/data
     networks:
       - bigdata-net
 
 networks:
   bigdata-net:
     driver: bridge
+
+volumes:
+  kafka_data:
+  zk_data:
+  es_data:
+  kibana_data:
