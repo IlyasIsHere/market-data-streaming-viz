@@ -23,9 +23,6 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - 22181:2181
-    volumes:
-      - zk_data:/datalog
-      - zk_data:/datalogs
     networks:
       - bigdata-net
 
@@ -43,8 +40,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    volumes:
-      - kafka_data:/var/lib/kafka/data
+      KAFKA_NUM_PARTITIONS: 3
     networks:
       - bigdata-net
       
@@ -113,7 +109,5 @@ networks:
     driver: bridge
 
 volumes:
-  kafka_data:
-  zk_data:
   es_data:
   kibana_data:
