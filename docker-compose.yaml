@@ -15,6 +15,15 @@ services:
     networks:
       - bigdata-net
 
+  nifi-registry:
+    image: apache/nifi-registry:latest
+    container_name: nifi-registry
+    ports:
+      - "18080:18080"
+    networks:
+      - bigdata-net
+
+
   # 2. APACHE ZOOKEEPER 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.4
