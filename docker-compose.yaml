@@ -10,8 +10,6 @@ services:
       - NIFI_WEB_HTTP_PORT=
       - SINGLE_USER_CREDENTIALS_USERNAME=admin
       - SINGLE_USER_CREDENTIALS_PASSWORD=password12345678
-    volumes:
-      - ./nifi_conf:/opt/nifi/nifi-current/conf
     networks:
       - bigdata-net
 
