@@ -63,6 +63,8 @@ services:
       SPARK_DAEMON_MASTER: "true"
       SPARK_MASTER_PORT: "7077"
       SPARK_MASTER_WEBUI_PORT: "8080"
+    volumes:
+      - ./src:/opt/spark/apps
     networks:
       - bigdata-net
 
