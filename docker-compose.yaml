@@ -10,6 +10,23 @@ services:
       - NIFI_WEB_HTTP_PORT=
       - SINGLE_USER_CREDENTIALS_USERNAME=admin
       - SINGLE_USER_CREDENTIALS_PASSWORD=password12345678
+      - NIFI_JVM_HEAP_INIT=512m
+      - NIFI_JVM_HEAP_MAX=1024m
+    volumes:
+      - nifi:/opt/nifi/nifi-current/logs
+      - nifi:/opt/nifi/nifi-current/conf
+      - nifi:/opt/nifi/nifi-current/database_repository
+      - nifi:/opt/nifi/nifi-current/flowfile_repository
+      - nifi:/opt/nifi/nifi-current/content_repository
+      - nifi:/opt/nifi/nifi-current/provenance_repository
+      - nifi:/opt/nifi/nifi-current/python_extensions
+      - nifi:/opt/nifi/nifi-current/nar_extensions
+      - nifi:/opt/nifi/nifi-current/state
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1536M
     networks:
       - bigdata-net
 
@@ -48,6 +65,12 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_NUM_PARTITIONS: 3
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1024M
     networks:
       - bigdata-net
       
@@ -63,8 +86,14 @@ services:
       SPARK_DAEMON_MASTER: "true"
       SPARK_MASTER_PORT: "7077"
       SPARK_MASTER_WEBUI_PORT: "8080"
+      SPARK_DAEMON_MEMORY: "800m"
     volumes:
       - ./src:/opt/spark/apps
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1280M
     networks:
       - bigdata-net
 
@@ -78,8 +107,14 @@ services:
     environment:
       SPARK_DAEMON_WORKER: "true"
       SPARK_WORKER_CORES: "1"
-      SPARK_WORKER_MEMORY: "1g"
+      SPARK_WORKER_MEMORY: "1024m"
+      SPARK_DAEMON_MEMORY: "512m"
       SPARK_MASTER: "spark://spark-master:7077"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1792M
     networks:
       - bigdata-net
 
@@ -91,10 +126,16 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
     ports:
       - "9200:9200"
     volumes:
       - es_data:/usr/share/elasticsearch/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2048M
     networks:
       - bigdata-net
 
@@ -110,6 +151,11 @@ services:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     volumes:
       - kibana_data:/usr/share/kibana/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1024M
     networks:
       - bigdata-net
 
@@ -118,5 +164,6 @@ networks:
     driver: bridge
 
 volumes:
+  nifi:
   es_data:
   kibana_data:
