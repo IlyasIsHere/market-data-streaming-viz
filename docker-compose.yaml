@@ -78,7 +78,10 @@ services:
   spark-master:
     image: apache/spark:3.4.2
     container_name: spark-master
-    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    user: root
+    command: >
+      bash -c "pip install textblob && python3 -m textblob.download_corpora &&
+      su -c '/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master' spark"
     ports:
       - "8080:8080" # Spark Web UI
       - "7077:7077" # Spark Communication Port
@@ -101,20 +104,23 @@ services:
   spark-worker:
     image: apache/spark:3.4.2
     container_name: spark-worker
+    user: root
     depends_on:
       - spark-master
-    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    command: >
+      bash -c "pip install textblob && python3 -m textblob.download_corpora &&
+      su -c '/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077' spark"
     environment:
       SPARK_DAEMON_WORKER: "true"
-      SPARK_WORKER_CORES: "1"
-      SPARK_WORKER_MEMORY: "1024m"
+      SPARK_WORKER_CORES: "2"
+      SPARK_WORKER_MEMORY: "2048m"
       SPARK_DAEMON_MEMORY: "512m"
       SPARK_MASTER: "spark://spark-master:7077"
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1792M
+          cpus: '2.0'
+          memory: 2560M
     networks:
       - bigdata-net
 
