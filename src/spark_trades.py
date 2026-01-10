@@ -27,7 +27,9 @@ df_kafka = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "kafka:9092") \
     .option("subscribe", "financial_trades") \
-    .option("startingOffsets", "latest") \
+    .option("startingOffsets", "earliest") \
+    .option("failOnDataLoss", "false") \
+    .option("maxOffsetsPerTrigger", "1000") \
     .load()
 
 # 4. Parse & Type Cast
@@ -74,6 +76,12 @@ query = df_analytics.writeStream \
     .outputMode("append") \
     .option("checkpointLocation", "/tmp/checkpoints/trades") \
     .option("es.resource", "market_prices") \
+    .option("es.batch.size.entries", "100") \
+    .option("es.batch.size.bytes", "1mb") \
+    .option("es.batch.write.refresh", "false") \
+    .trigger(processingTime="10 seconds") \
     .start()
 
+print("CryptoTradesAnalytics job started successfully")
+print("Waiting for streaming data from financial_trades topic...")
 query.awaitTermination()
